@@ -104,3 +104,59 @@ def get_full_sequence_latent(model, X, M, Bx, I, win=200, hop=100, device='cuda'
 
     return z_full
 
+@torch.no_grad()
+def decode_from_z(model, z, Bx, I):
+    """
+    Decode signals given latent z(t), behaviors, and identities.
+    Shapes:
+      z:  (B, T, L)
+      Bx: (B, Tb, T)
+      I:  (B, N)
+    Returns:
+      recon: (B, N, T)
+    """
+    B, T, L = z.shape
+    Bx_t = Bx.permute(0, 2, 1)  # (B, T, Tb)
+
+    # time features from z & behaviors
+    dec_time = model.dec_time(torch.cat([z, Bx_t], dim=-1))  # (B, T, Hd)
+
+    # identity embedding
+    id_e = model.id_embed(I)  # (B, N, Ei)
+
+    # decode
+    Hd = dec_time.size(-1)
+    id_e_exp = id_e.unsqueeze(1).expand(B, T, id_e.size(1), id_e.size(2)) # (B,T,N,Ei)
+    dt_exp = dec_time.unsqueeze(2).expand(B, T, id_e.size(1), Hd) # (B,T,N,Hd)
+    nh_in = torch.cat([dt_exp, id_e_exp], dim=-1) # (B,T,N,Hd+Ei)
+    pred = model.neuron_head(nh_in).squeeze(-1) # (B,T,N)
+    recon = pred.permute(0, 2, 1).contiguous() # (B,N,T)
+
+    return recon
+
+@torch.no_grad()
+def decode_full_sequence_from_z(model, z_full, Bx, I, win=200, hop=100, device="cuda"):
+    model.eval()
+    z_full = z_full.to(device)
+    Bx, I = Bx.to(device), I.to(device)
+    B, T, L = z_full.shape
+
+    recon = None
+    weight = torch.zeros(B, T, 1, device=device)
+
+    for t0 in range(0, T, hop):
+        t1 = min(t0 + win, T)
+        zw  = z_full[:, t0:t1, :]
+        Bxw = Bx[:, :, t0:t1]
+        if t1 - t0 < win:
+            pad = win - (t1 - t0)
+            zw  = nn.functional.pad(zw, (0, 0, 0, pad)) # pad time
+            Bxw = nn.functional.pad(Bxw, (0, pad))
+        rw = decode_from_z(model, zw, Bxw, I)[:, :, :t1 - t0] # (B,N,segments)
+        if recon is None:
+            B_, N_, _ = rw.shape
+            recon = torch.zeros(B_, N_, T, device=device)
+        recon[:, :, t0:t1] += rw
+        weight[:, t0:t1, :] += 1.0
+
+    return recon / weight.permute(0,2,1).clamp_min(1.0) # reshape weight to (B,1,T)
