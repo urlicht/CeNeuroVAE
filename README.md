@@ -1,25 +1,12 @@
 # CeNeuroVAE
 
-ceneurovae is a compact Variational Autoencoder (VAE) package tailored for neural time-series conditioned upon behaviors. It provides modular components (encoder, decoder, positional encoding, losses, data loaders) and a small training loop function to quickly test it out.
+ceneurovae is a compact package containing a Variational Autoencoder (VAE) with transformers tailored for neural time-series conditioned with behaviors. It provides modular components (encoder, decoder, positional encoding, losses, data loaders) and a small training loop function to quickly test it out.
 
-The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature.
+It learns a latent trajectory that explains neural activity while conditioning on observed behaviors and optional neuron identities. Reconstruction is computed per neuron with learned neuron-specific affine parameters (gain/bias).
+
+The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature. Most of these neurons in the datasets were lableed with NeuroPAL (i.e. neural identities are known).
 
 While the model was tested on these C. elegans datasets, you can easily use this model/package to fit neural and behavioral datasets from any model systems, as long as most neurons have known neural identities.
-
----
-
-## Table of contents
-
-- Overview
-- Package layout
-- Key concepts & model overview
-- Public API (typical names)
-- Important variables and key tensor dimensions
-- Example usage
-- Training / hyperparameters
-- Data & IO
-- Contributing & testing
-- License
 
 ---
 
@@ -34,84 +21,120 @@ ceneurovae implements a configurable VAE for sequential data. Core ideas:
 
 ---
 
-## Package layout
+## At a glance
 
-(Inside `src/ceneurovae/`)
-
-- `model/` — VAE and supporting utilities
-  - `vae.py` — top-level VAE wiring (encoder, reparam, decoder)
-  - `utility.py` — config dataclasses, positional encodings, helpers
-  - `loss.py` — reconstruction losses and KL schedules
-- `import_data.py` (or `_import_data.py`) — loaders & dataset helpers
-- `training.py` — training loop, checkpointing, metrics
-- `utils.py` — small helpers, logging, metrics
-
----
-
-## Key concepts & model overview
-
-Model components:
-
-- Encoder
-  - Maps input sequences to parameters of a Gaussian posterior (mu, logvar).
-  - Typical backbone: 1D conv / temporal CNN, or stacked RNN / Transformer blocks.
-  - Output: posterior mean `mu` and log-variance `logvar` of shape `(batch, latent_dim)`.
-
-- Reparameterization
-  - Sample z = mu + eps * exp(0.5 * logvar), eps ~ N(0, I).
-
-- Decoder
-  - Conditioned on z (optionally tiled across time or combined with positional encodings).
-  - Produces reconstructed sequence of same shape as input `(batch, seq_len, channels)`.
-
-- PositionalEncoding
-  - Adds explicit time location information to decoder inputs.
-  - Shape: `(seq_len, embed_dim)` or broadcastable to `(batch, seq_len, embed_dim)`.
-
-- Losses
-  - Reconstruction: MSE or Huber on raw or normalized signals.
-  - KL divergence between q(z|x) and p(z) (usually standard normal).
-  - Annealing / scheduling: linearly increase KL weight, or step schedule.
+- **Inputs**
+  - Neural signals `X ∈ ℝ^{B×N×T}`
+  - Observation mask `M ∈ {0,1}^{B×N×T}`
+  - Behavioral channels `Bx ∈ ℝ^{B×T_b×T}`
+  - Neuron identity indices `I ∈ {0,…,n_id-1}^{B×N}` (`0` = unknown)
+- **Backbone**
+  - Pooled neuron token (masked mean over neurons) + projected behavior token → **Transformer encoder** over time
+- **Latent**
+  - Per-time posterior `q(z_t|·) = N(μ_t, σ_t²)`, reparameterized
+- **Decoder**
+  - Combines `[z_t; b_t]` to produce a **time context**, then conditions on per-neuron identity embedding to predict signals with neuron-wise **gain/bias**
+- **Losses**
+  - Masked reconstruction loss (MSE or Huber) + `β`-weighted KL with optional **freebits** `τ`
 
 ---
 
-## Important variables and key dimensions
+## Tensor shapes & symbols
 
-Below are the canonical names and example default values. Adapt to your code.
+| Symbol | Meaning |
+|---|---|
+| `B` | batch size |
+| `N` | # neurons |
+| `T` | # time steps |
+| `T_b` | # behavior channels |
+| `D_n` | `cfg.neuron_token_dim` |
+| `D_m` | `cfg.model_dim` |
+| `L` | `cfg.latent_dim` |
+| `E_i` | `cfg.neuron_embed_dim` |
+| `H_d` | `cfg.decoder_hidden` |
 
-- Data / input
-  - batch size: `B`
-  - sequence length (timesteps): `T` (e.g., 100, 250)
-  - channels / features per timestep: `C` (e.g., 1 for a single trace, or multi-channel)
-  - input tensor shape: `(B, T, C)`
+### Inputs
 
-- Encoder
-  - hidden dimension(s): `H` (per layer, e.g., 128, 256)
-  - number of layers: `L_enc` (e.g., 1-4)
-  - encoder output (posterior params): `mu`, `logvar` shape `(B, Z)`
+| Name | Shape | Dtype | Notes |
+|---|---|---|---|
+| `X` | `(B, N, T)` | float | Neural traces (e.g., ΔF/F, spikes, etc.) |
+| `M` | `(B, N, T)` | `{0,1}` / float | Observation mask; 0’s are ignored in pooling & loss |
+| `Bx` | `(B, T_b, T)` | float | Behavior covariates aligned to `T` |
+| `I` | `(B, N)` | long | Neuron identity IDs; **0 means unknown** |
 
-- Latent space
-  - latent dimension: `Z` (e.g., 8, 16, 32)
-  - latent tensor shape: `(B, Z)`
+### Outputs (`forward`)
 
-- Decoder
-  - may receive `z` expanded to `(B, T, Z)` (tile) or combined via conditioning layers
-  - decoder hidden dims: `H_dec`
-  - reconstructed output shape: `(B, T, C)`
+```python
+{
+  "reconstruction": recon,  # (B, N, T)
+  "mu":            mu,      # (B, T, L)
+  "z":             z,       # (B, T, L)
+  "loss_rec":      loss_rec,
+  "loss_kl":       loss_kl,
+  "loss_sum":      loss_sum
+}
+```
 
-- Loss & training
-  - reconstruction loss per example: sum / mean over `(T, C)`
-  - KL per example: `0.5 * sum(1 + logvar - mu^2 - exp(logvar))` (sum over latent dims)
-  - kl_weight (beta): scalar schedule (0 -> 1 typical)
+---
 
-Typical defaults to try:
-- T = 100, C = 3, Z = 32, H = 256, batch = 32, learning rate = 1e-3
+## Architecture
 
-Shape summary (single forward example):
-- input: x (B, T, C)
-- encoder outputs: mu, logvar (B, Z)
-- sampled: z (B, Z)
-- decoder recon: x_hat (B, T, C)
+### 1) Neuron token (masked pooling)
+- Per-neuron scalar `(·,1)` → MLP → `D_n`
+- Masked mean across neurons at each `t`
+- Shapes: `(B*T, N, 1)` → MLP → `(B*T, N, D_n)` → masked mean → `(B, T, D_n)`
+
+### 2) Behavior token
+- Permute `Bx: (B, T_b, T) → (B, T, T_b)`
+- Linear → GELU to width `beh_width = max(32, model_dim//16)`
+- Output: `(B, T, beh_width)`
+
+### 3) Fusion & temporal encoder
+- Concatenate `[n_token, b_token]` → Linear → GELU → Dropout → **PositionalEncoding**
+- **TransformerEncoder** (`n_layers`, `n_heads`, `d_model=D_m`) over time → `h ∈ ℝ^{B×T×D_m}`
+
+### 4) Posterior heads
+- `mu = Linear(D_m → L)`, `logvar = Linear(D_m → L)`
+- Reparameterization (for gradients):  `z_t = mu_t + eps * exp(0.5 * logvar_t)`
+
+### 5) Decoder
+- Time context: `dec_time = MLP([z_t; b_t] → H_d)` with two GELU layers
+- Neuron identity:
+  - `id_e = Embedding(n_identities, E_i)`  
+  - `id_to_affine(id_e) → (gain, bias) ∈ ℝ^{B×N}`
+- Prediction:
+  - Tile `dec_time` across neurons and concat with `id_e`
+  - `neuron_head([dec_time_t; id_e_n]) → scalar`
+  - Apply affine: `pred_tn = head(...) * gain_n + bias_n`
+  - Permute back to `(B, N, T)`
+
+### 6) Behavior dropout
+In some cases, neurons can be reconstructed from the behavioral data alone, without using the latents. To prevent this, behavior info dropout is used.
+- During training, with **p=0.1**, behavior inputs to the decoder are zeroed:  
+  `if self.training and torch.rand(()) < 0.1: b_t = 0`
+
+---
+
+## Losses
+The model optimizes a combination of reconstruction loss and KL divergence, with options for stability and regularization.
+
+1. **Masked Reconstruction Loss**
+   - Measures how well the model can reconstruct the observed neural signals.
+   - Only positions where the mask `M = 1` are included in the loss.
+   - Choice of loss function:
+     - **MSE** (mean squared error) — penalizes squared differences.
+     - **Huber loss** — less sensitive to outliers, smooth transition between L1 and L2.
+
+2. **KL Divergence Loss**
+   - Regularizes the approximate posterior distribution `q(z|X,B)` toward the standard normal prior `N(0, I)`.
+   - Encourages the latent variables to stay close to a Gaussian manifold.
+   - **Freebits option:** You can enforce a minimum contribution (`τ`) per latent dimension, which prevents “posterior collapse” (where latents carry no information).
+
+3. **Total Loss**
+   - The final training objective is:
+     - `total_loss = reconstruction_loss + beta_kl * kl_loss`
+   - `beta_kl` is a configurable weight that controls the tradeoff between reconstruction quality and latent regularization.
+
 
 ---
 
