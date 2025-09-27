@@ -2,6 +2,15 @@ import h5py
 import torch
 import numpy as np
 
+def convert_data_to_tensor(datasets):
+    for k, v in datasets.items():
+        v["X"]  = torch.tensor(v["X"], dtype=torch.float32)
+        v["M"]  = torch.tensor(v["M"], dtype=torch.float32)
+        v["Bx"] = torch.tensor(v["Bx"], dtype=torch.float32)
+        v["I"]  = torch.tensor(v["I"], dtype=torch.long)
+    
+    return datasets
+
 def import_h5(path):
     data = {}
     with h5py.File(path, "r") as f:
@@ -20,13 +29,4 @@ def import_h5(path):
             inner_dict["Bx"] = inner_dict["B"] / B_norm_divisor
             data[uid_key] = inner_dict
 
-    return data
-
-def convert_data_to_tensor(datasets):
-    for k, v in datasets.items():
-        v["X"]  = torch.tensor(v["X"], dtype=torch.float32)
-        v["M"]  = torch.tensor(v["M"], dtype=torch.float32)
-        v["Bx"] = torch.tensor(v["Bx"], dtype=torch.float32)
-        v["I"]  = torch.tensor(v["I"], dtype=torch.long)
-    
-    return datasets
+    return convert_data_to_tensor(data)
