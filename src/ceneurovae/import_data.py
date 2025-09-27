@@ -1,5 +1,5 @@
 import h5py
-import random
+import torch
 import numpy as np
 from typing import Dict, List
 
@@ -22,3 +22,12 @@ def import_h5(path):
             data[uid_key] = inner_dict
 
     return data
+
+def convert_data_to_tensor(datasets):
+    for k, v in datasets.items():
+        v["X"]  = torch.tensor(v["X"], dtype=torch.float32)
+        v["M"]  = torch.tensor(v["M"], dtype=torch.float32)
+        v["Bx"] = torch.tensor(v["Bx"], dtype=torch.float32)
+        v["I"]  = torch.tensor(v["I"], dtype=torch.long)
+    
+    return datasets
