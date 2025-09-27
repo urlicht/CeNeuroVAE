@@ -28,5 +28,6 @@ def import_h5(path):
 
             inner_dict["Bx"] = inner_dict["B"] / B_norm_divisor
             data[uid_key] = inner_dict
+        labels = f["label_name"][()].astype(str).tolist()  # list of str
 
-    return convert_data_to_tensor(data)
+    return convert_data_to_tensor(data), labels
