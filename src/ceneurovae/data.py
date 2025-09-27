@@ -11,7 +11,7 @@ class DatasetWindow(Dataset):
     self.stride   = int(stride)
     self.ignore_unlabeled = bool(ignore_unlabeled)
 
-    # Precompute which neuron rows to keep per dataset (labeled only if requested)
+    # determine which neuron rows to keep per dataset (labeled only if requested)
     self.keep_idx = []  # list[Tensor(long) of indices per dataset]
     for dataset in self.datasets:
       I = torch.as_tensor(dataset["I"]).long()
@@ -21,10 +21,10 @@ class DatasetWindow(Dataset):
         L = torch.arange(I.numel(), dtype=torch.long)
       self.keep_idx.append(L)
 
-    # Build (dataset_idx, t_start) only for datasets that have something to train on
+    # build (dataset_idx, t_start) only for datasets that have something to train on
     self.index: List[Tuple[int, int]] = []
     for i_dataset, dataset in enumerate(self.datasets):
-      # If ignoring unlabeled and none are labeled, skip this dataset entirely
+      # if ignoring unlabeled and none are labeled, skip this dataset entirely
       if self.ignore_unlabeled and self.keep_idx[i_dataset].numel() == 0:
         continue
       T = int(dataset["X"].shape[1])
@@ -39,17 +39,17 @@ class DatasetWindow(Dataset):
     dataset = self.datasets[i_dataset]
     t_end = t_start + self.window_T
 
-    # Slice time first
+    # slice time first
     X = torch.as_tensor(dataset['X'][:, t_start:t_end])
     M = torch.as_tensor(dataset['M'][:, t_start:t_end])
     Bx = torch.as_tensor(dataset['Bx'][:, t_start:t_end])
     I = torch.as_tensor(dataset['I']).long()
 
-    # Then slice neurons (drop unlabeled rows if requested)
+    # slice neurons (drop unlabeled rows if requested)
     L = self.keep_idx[i_dataset]
-    X = X[L]            # (N_kept, T)
-    M = M[L]            # (N_kept, T)
-    I = I[L]            # (N_kept,)
+    X = X[L] # (N_kept, T)
+    M = M[L] # (N_kept, T)
+    I = I[L] # (N_kept,)
 
     metadata = {'uid': dataset.get('uid', dataset), 't_start': t_start}
 
@@ -73,7 +73,7 @@ def pad_collate(batch):
         n = Ns[b]
         X_pad[b, :n] = Xs[b]
         M_pad[b, :n] = Ms[b]
-        I_pad[b, :n] = Is[b].long()   # ensure correct dtype for embedding
+        I_pad[b, :n] = Is[b].long() # ensure correct dtype for embedding
         if Tb > 0:
             Bx_pad[b] = Bxs[b]
 
@@ -105,12 +105,12 @@ def build_loaders(datasets, window_T=200, stride=50, batch_size=8, num_workers=0
 
   dataset_train = DatasetWindow(train, window_T=window_T, stride=stride,
                                 ignore_unlabeled=ignore_unlabeled)
-  dataset_val   = DatasetWindow(val,   window_T=window_T, stride=stride,
+  dataset_val = DatasetWindow(val,   window_T=window_T, stride=stride,
                                 ignore_unlabeled=ignore_unlabeled)
 
   loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True,
                             collate_fn=pad_collate, num_workers=num_workers, pin_memory=True)
-  loader_val   = DataLoader(dataset_val, batch_size=batch_size, shuffle=False,
+  loader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False,
                             collate_fn=pad_collate, num_workers=num_workers, pin_memory=True)
 
   return loader_train, loader_val, train_uids, val_uids
