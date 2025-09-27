@@ -1,7 +1,6 @@
 import h5py
 import torch
 import numpy as np
-from typing import Dict, List
 
 def import_h5(path):
     data = {}
