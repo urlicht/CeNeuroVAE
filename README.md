@@ -2,7 +2,10 @@
 
 ceneurovae is a compact Variational Autoencoder (VAE) package tailored for neural time-series conditioned upon behaviors. It provides modular components (encoder, decoder, positional encoding, losses, data loaders) and a small training loop function to quickly test it out.
 
-The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature. While the model was tested on these C. elegans datasets, you can easily use this model/package to fit neural and behavioral datasets from any model systems, as long as most neurons have known neural identities.
+The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature.
+
+While the model was tested on these C. elegans datasets, you can easily use this model/package to fit neural and behavioral datasets from any model systems, as long as most neurons have known neural identities.
+
 ---
 
 ## Table of contents
@@ -149,26 +152,9 @@ list_loss, list_lr = fit_model(model, loader_train, loader_val, n_epoch, optim,
 ```
 ---
 
-## Training details & hyperparameters
-
-Recommended checkpoints to experiment with:
-- Reconstruction loss: MSE vs Huber (Huber more robust to outliers)
-- KL schedule: start KL weight small and gradually increase to 1 over warmup steps
-- Latent dim: larger values allow more capacity, but increase risk of posterior collapse
-- Regularization: dropout, weight decay
-
-Metrics to monitor:
-- Validation reconstruction error (MSE / Huber)
-- KL magnitude (per latent dim)
-- ELBO (reconstruction + KL)
-- Sampled reconstructions and latent traversals (visual inspection)
-
----
-
 ## Data & IO
 
 - Data loaders should yield tensors shaped `(B, T, C)` and optionally masks for missing data.
-- Normalization: normalize per-channel (mean/STD) during preprocessing; store scalers with checkpoints.
-- For reproducibility, log config (VAEConfig) and training hyperparameters with each run.
+- Normalization: normalize neural traces per neuron and behavioral variables globally.
 
 ---
