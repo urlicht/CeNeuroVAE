@@ -3,7 +3,7 @@ import random
 import numpy as np
 from typing import Dict, List
 
-def import_data(path):
+def import_h5(path):
     data = {}
     with h5py.File(path, "r") as f:
         g_data = f["data"]
