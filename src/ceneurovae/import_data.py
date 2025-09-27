@@ -22,23 +22,3 @@ def import_h5(path):
             data[uid_key] = inner_dict
 
     return data
-
-def split_datasets(datasets: List[Dict], val_frac: float = 0.2, seed: int = 0):
-    uids = datasets.keys()
-    uniq = sorted(set(uids))
-    rng = random.Random(seed)
-    rng.shuffle(uniq)
-    n_val = max(1, int(round(len(uniq) * val_frac)))
-    val_uids = set(uniq[:n_val])
-    train_uids = set(uniq[n_val:])
-
-    train = []
-    val = []
-
-    for (uid, dataset) in datasets.items():
-      if uid in val_uids:
-        val.append(dataset)
-      else:
-        train.append(dataset)
-        
-    return train, val, train_uids, val_uids

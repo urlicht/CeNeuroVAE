@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import random
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 class DatasetWindow(Dataset):
   def __init__(self, datasets, window_T: int, stride: int):
@@ -55,6 +55,26 @@ def pad_collate(batch):
             Bx_pad[b] = Bxs[b]
 
     return X_pad, M_pad, Bx_pad, I_pad, metas
+
+def split_datasets(datasets: List[Dict], val_frac: float = 0.2, seed: int = 0):
+    uids = datasets.keys()
+    uniq = sorted(set(uids))
+    rng = random.Random(seed)
+    rng.shuffle(uniq)
+    n_val = max(1, int(round(len(uniq) * val_frac)))
+    val_uids = set(uniq[:n_val])
+    train_uids = set(uniq[n_val:])
+
+    train = []
+    val = []
+
+    for (uid, dataset) in datasets.items():
+      if uid in val_uids:
+        val.append(dataset)
+      else:
+        train.append(dataset)
+        
+    return train, val, train_uids, val_uids
 
 def build_loaders(datasets, window_T=200, stride=50, batch_size=8, num_workers=0):
   train, val, train_uids, val_uids = split_datasets(datasets)
