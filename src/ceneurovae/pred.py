@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 @torch.no_grad()
-def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, device='mps'):
+def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, device='cpu'):
     """
     Run model in sliding windows and stitch together reconstruction for the full sequence.
     
@@ -46,7 +46,7 @@ def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, devic
         weight[:, :, t0:t1]     += 1.0
 
     recon_full = recon_full / weight.clamp_min(1.0)
-    
+
     return recon_full
 
 @torch.no_grad()
