@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from utility import VAEConfig, PositionalEncoding
-from loss import loss_mse, loss_huber
+from .utility import VAEConfig, PositionalEncoding
+from .loss import loss_mse, loss_huber
 
 class NeuroBehaviorVAE(nn.Module):
   """
