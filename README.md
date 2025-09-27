@@ -8,6 +8,13 @@ The model was tested out with the labeled datasets from [Atanas & Kim et. al. 20
 
 While the model was tested on these C. elegans datasets, you can easily use this model/package to fit neural and behavioral datasets from any model systems, as long as most neurons have known neural identities.
 
+While there're countless applications, some first order things you could do after model fitting:
+- examine shared dynamics across neurons and datasets/animals.
+- compress high-dimensional neural recordings into a compact latent trajectory z_t.
+- examine the joint representation of behaviors and neural info.
+- predict neural activity given behaviors. you can drive the model with an arbitrary set of behaviors and see how specific neurons respond.
+- reconstruct missing or noisy neural signals by leveraging the mask-aware reconstruction.
+
 ---
 
 ## Overview
