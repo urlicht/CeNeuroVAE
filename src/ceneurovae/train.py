@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import time
-from model.loss import step_kl_schedule
+from .model.loss import step_kl_schedule
+from .optimizer import current_lr
 
 def train_epoch(model, loader, optim, device):
   model.train()
