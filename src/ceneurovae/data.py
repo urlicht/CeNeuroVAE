@@ -76,8 +76,9 @@ def split_datasets(datasets: List[Dict], val_frac: float = 0.2, seed: int = 0):
         
     return train, val, train_uids, val_uids
 
-def build_loaders(datasets, window_T=200, stride=50, batch_size=8, num_workers=0):
-  train, val, train_uids, val_uids = split_datasets(datasets)
+def build_loaders(datasets, window_T=200, stride=50, batch_size=8, num_workers=0,
+                  val_frac: float = 0.2, seed: int = 0):
+  train, val, train_uids, val_uids = split_datasets(datasets, val_frac=val_frac, seed=seed)
 
   dataset_train = DatasetWindow(train, window_T=window_T, stride=stride)
   dataset_val = DatasetWindow(val, window_T=window_T, stride=stride)
