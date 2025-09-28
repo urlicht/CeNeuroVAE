@@ -46,7 +46,7 @@ def fit_model(model, loader_train, loader_val, n_epoch,
               optim, scheduler_seq, scheduler_plateau, cosine_finished_fn,
               device, grad_clip=1.0):
     best_loss_val = float("inf")
-    list_loss, list_lr = [], []
+    history = []
 
     for epoch in range(1, n_epoch + 1):
         t1 = time.time_ns()
@@ -68,12 +68,20 @@ def fit_model(model, loader_train, loader_val, n_epoch,
             scheduler_plateau.step(val_["val_sum"])
 
         t2 = time.time_ns()
+        t_elapsed = (t2 - t1) / 1e9
+
         lr_ = current_lr(optim)
-        print(f"{epoch} {((t2-t1)/1e9):.2f}s  "
+        print(f"{epoch} {(t_elapsed):.2f}s  "
               f"train: {train_['train_sum']:.4f}  val: {val_['val_sum']:.4f}  "
               f"kl_train: {train_['train_kl']:.4f}  kl_val: {val_['val_kl']:.4f}  lr: {lr_}")
 
-        list_loss.append((train_, val_))
-        list_lr.append(lr_)
+        # save epoch record
+        history.append({
+            "epoch": epoch,
+            **train_,
+            **val_,
+            "lr": lr_,
+            "epoch_elapsed": t_elapsed,
+        })
 
-    return list_loss, list_lr
+    return history
