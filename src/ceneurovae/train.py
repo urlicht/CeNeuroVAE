@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import time
+import csv
 from .model.loss import step_kl_schedule
 from .optimizer import current_lr
 
@@ -41,7 +42,9 @@ def val_epoch(model, loader, device):
     
     return {"val_rec": loss_rec / n, "val_kl": loss_kl / n, "val_sum": loss_sum / n}
 
-def fit_model(model, loader_train, loader_val, n_epoch, optim, scheduler_seq, scheduler_plateau, cosine_finished_fn, device):
+def fit_model(model, loader_train, loader_val, n_epoch,
+              optim, scheduler_seq, scheduler_plateau, cosine_finished_fn,
+              device, grad_clip=1.0):
     best_loss_val = float("inf")
     list_loss, list_lr = [], []
 
@@ -49,7 +52,7 @@ def fit_model(model, loader_train, loader_val, n_epoch, optim, scheduler_seq, sc
         t1 = time.time_ns()
 
         # --- training, validation ---
-        train_ = train_epoch(model, loader_train, optim, device)
+        train_ = train_epoch(model, loader_train, optim, device, grad_clip)
         val_   = val_epoch(model, loader_val, device)
 
         # any KL anneal etc.
