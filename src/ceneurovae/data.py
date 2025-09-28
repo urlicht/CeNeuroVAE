@@ -100,7 +100,7 @@ def split_datasets(datasets: List[Dict], val_frac: float = 0.2, seed: int = 0):
     return train, val, train_uids, val_uids
 
 def build_loaders(datasets, window_T=200, stride=50, batch_size=8, num_workers=0,
-                  val_frac: float = 0.2, seed: int = 0, ignore_unlabeled: bool = True):
+                  val_frac: float = 0.2, seed: int = 0, ignore_unlabeled: bool = True, pin_memory: bool = False):
   train, val, train_uids, val_uids = split_datasets(datasets, val_frac=val_frac, seed=seed)
 
   dataset_train = DatasetWindow(train, window_T=window_T, stride=stride,
@@ -109,8 +109,8 @@ def build_loaders(datasets, window_T=200, stride=50, batch_size=8, num_workers=0
                                 ignore_unlabeled=ignore_unlabeled)
 
   loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True,
-                            collate_fn=pad_collate, num_workers=num_workers, pin_memory=True)
+                            collate_fn=pad_collate, num_workers=num_workers, pin_memory=pin_memory)
   loader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False,
-                            collate_fn=pad_collate, num_workers=num_workers, pin_memory=True)
+                            collate_fn=pad_collate, num_workers=num_workers, pin_memory=pin_memory)
 
   return loader_train, loader_val, train_uids, val_uids
