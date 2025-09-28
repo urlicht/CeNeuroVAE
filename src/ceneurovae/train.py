@@ -43,9 +43,15 @@ def val_epoch(model, loader, device):
     return {"val_rec": loss_rec / n, "val_kl": loss_kl / n, "val_sum": loss_sum / n}
 
 def fit_model(model, loader_train, loader_val, n_epoch,
-              optim, scheduler_seq, scheduler_plateau, cosine_finished_fn,
-              device, grad_clip=1.0):
+              optim, scheduler_seq, scheduler_plateau, cosine_finished_fn, device,
+              early_stop_patience: int = 20,
+              early_stop_min_delta: float = 0.0,
+              path_best: str | None = None,
+              grad_clip=1.0):
     best_loss_val = float("inf")
+    best_state = None
+    n_epoch_no_improve = 0
+    
     history = []
 
     for epoch in range(1, n_epoch + 1):
@@ -75,6 +81,35 @@ def fit_model(model, loader_train, loader_val, n_epoch,
               f"train: {train_['train_sum']:.4f}  val: {val_['val_sum']:.4f}  "
               f"kl_train: {train_['train_kl']:.4f}  kl_val: {val_['val_kl']:.4f}  lr: {lr_}")
 
+        # --- early stopping / best model saving ---
+        improved = (val_["val_sum"] < best_loss_val - early_stop_min_delta)
+        if improved:
+            best_loss_val = val_["val_sum"]
+            best_epoch = epoch
+            n_epoch_no_improve = 0
+
+            # keep the best state in the cpu memory
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            
+            # save to file
+            if path_best:
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "model_state": model.state_dict(),
+                        "optim_state": optim.state_dict(),
+                        "best_loss_val": best_loss_val,
+                    },
+                    path_best
+                )
+        else:
+            n_epoch_no_improve += 1
+      
+        if early_stop_patience is not None and early_stop_patience > 0:
+            if n_epoch_no_improve >= early_stop_patience:
+                print(f"early stopping at {epoch}. best epoch {best_epoch} with val loss {best_loss_val:.4f}")
+                break
+
         # save epoch record
         history.append({
             "epoch": epoch,
@@ -84,4 +119,4 @@ def fit_model(model, loader_train, loader_val, n_epoch,
             "epoch_elapsed": t_elapsed,
         })
 
-    return history
+    return history, best_epoch, best_state
