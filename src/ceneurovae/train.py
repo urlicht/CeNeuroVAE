@@ -26,20 +26,20 @@ def train_epoch(model, loader, optim, device, grad_clip=1.0):
 
     return {"train_rec": loss_rec / n, "train_kl": loss_kl / n, "train_sum": loss_sum / n}
 
+@torch.no_grad()
 def val_epoch(model, loader, device):
     model.eval()
     loss_rec = loss_kl = loss_sum = n = 0
-    with torch.no_grad():
-        for X, M, Bx, I, _ in loader:
-          X, M, Bx, I = X.to(device), M.to(device), Bx.to(device), I.to(device)
-          out = model(X, M, Bx, I)
+    for X, M, Bx, I, _ in loader:
+        X, M, Bx, I = X.to(device), M.to(device), Bx.to(device), I.to(device)
+        out = model(X, M, Bx, I)
 
-          loss_rec += out["loss_rec"].item()
-          loss_kl += out["loss_kl"].item()
-          loss_sum += out["loss_sum"].item()
-          n += 1
-
-    return {"val_rec": loss_rec / n, "val_kl": loss_kl /n , "val_sum": loss_sum / n}
+        loss_rec += float(out["loss_rec"])
+        loss_kl  += float(out["loss_kl"])
+        loss_sum += float(out["loss_sum"])
+        n += 1
+    
+    return {"val_rec": loss_rec / n, "val_kl": loss_kl / n, "val_sum": loss_sum / n}
 
 def fit_model(model, loader_train, loader_val, n_epoch, optim, scheduler_seq, scheduler_plateau, cosine_finished_fn, device):
     best_loss_val = float("inf")
