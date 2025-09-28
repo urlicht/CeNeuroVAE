@@ -1,14 +1,16 @@
 # CeNeuroVAE
 
-ceneurovae is a compact package containing a Variational Autoencoder (VAE) with transformers tailored for neural time-series conditioned with behaviors. It provides modular components (encoder, decoder, positional encoding, losses, data loaders) and a small training loop function to quickly test it out.
+ceneurovae is a compact package containing a Behavior-conditioned Neural data Variational Autoencoder (VAE) with transformers. It provides modular components (encoder, decoder, positional encoding, losses, data loaders) and a small training loop function to quickly test it out.
 
 It learns a latent trajectory that explains neural activity while conditioning on observed behaviors and optional neuron identities. Reconstruction is computed per neuron with learned neuron-specific affine parameters (gain/bias).
 
 The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature. Most of these neurons in the datasets were labeled with NeuroPAL (i.e. neural identities are known).
 
+![model summary diagram](doc/img/model_summary_diagram.png)
+
 While the model was tested on these C. elegans datasets, you can easily use this model/package to fit neural and behavioral datasets from any model systems, as long as most neurons have known neural identities.
 
-While there're countless applications, some first order things you could do after model fitting:
+While there're countless potential applications, some first order things you could do after model fitting:
 - examine shared dynamics across neurons and datasets/animals.
 - compress high-dimensional neural recordings into a compact latent trajectory z_t.
 - examine the joint representation of behaviors and neural info.
