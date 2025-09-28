@@ -146,7 +146,7 @@ The model optimizes a combination of reconstruction loss and KL divergence, with
 ---
 
 ## Example usage
-Example usage:
+### Training
 ```python
 import torch
 import torch.nn as nn
@@ -180,6 +180,28 @@ loader_train, loader_val, train_uids, val_uids = build_loaders(datasets, window_
 list_loss, list_lr = fit_model(model, loader_train, loader_val, n_epoch, optim,
                                scheduler_seq, scheduler_plat, cosine_done, device)
 ```
+
+### Reconstruction & Latents
+```python
+device = torch.device("cuda")
+model.eval()
+
+# neural trace reconstruction
+recon = get_full_sequence_reconstruction(model, X, M, Bx, I, window_T=100, stride=50, device=device)
+
+# get the latents
+z_full = get_full_sequence_latent(model, X, M, Bx, I, window_T=100, stride=50, device=device)
+```
+
+### Decoding given latents
+```python
+# decode from z
+decode_from_z(model, z, Bx, I)
+
+# decode full sequence from z
+decode_full_sequence_from_z(model, z_full, Bx, I, window_T=200, stride=100, device="cuda")
+```
+
 ---
 
 ## Data & IO
