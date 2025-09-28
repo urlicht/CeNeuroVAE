@@ -4,7 +4,7 @@ ceneurovae is a compact package containing a Variational Autoencoder (VAE) with 
 
 It learns a latent trajectory that explains neural activity while conditioning on observed behaviors and optional neuron identities. Reconstruction is computed per neuron with learned neuron-specific affine parameters (gain/bias).
 
-The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature. Most of these neurons in the datasets were lableed with NeuroPAL (i.e. neural identities are known).
+The model was tested out with the labeled datasets from [Atanas & Kim et. al. 2023](https://doi.org/10.1016/j.cell.2023.07.035). These datasets contain simultaneously recorded whole-brain neural traces and behavioral info such as velocity, feeding, and head curvature. Most of these neurons in the datasets were labeled with NeuroPAL (i.e. neural identities are known).
 
 While the model was tested on these C. elegans datasets, you can easily use this model/package to fit neural and behavioral datasets from any model systems, as long as most neurons have known neural identities.
 
@@ -21,9 +21,9 @@ While there're countless applications, some first order things you could do afte
 
 ceneurovae implements a configurable VAE for sequential data. Core ideas:
 
-- Encoder compresses input sequences to a low-dimensional latent vector z.
+- Encoder compresses input sequences to a low-dimensional latent vector z per time.
 - A probabilistic latent prior (N(0, I)) and a learned posterior q(z|x) are used.
-- Decoder reconstructs sequences from z (optionally conditioned with positional encodings).
+- Decoder reconstructs sequences from z.
 - Loss is reconstruction term (MSE / Huber) + KL divergence; KL weight can be scheduled to prevent posterior collapse.
 
 ---
