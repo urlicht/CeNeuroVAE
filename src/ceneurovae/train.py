@@ -4,7 +4,7 @@ import time
 from .model.loss import step_kl_schedule
 from .optimizer import current_lr
 
-def train_epoch(model, loader, optim, device):
+def train_epoch(model, loader, optim, device, grad_clip=1.0):
   model.train()
   loss_rec = loss_kl = loss_sum = n = 0
 
@@ -14,7 +14,9 @@ def train_epoch(model, loader, optim, device):
     loss = out["loss_sum"]
     optim.zero_grad(set_to_none=True)
     loss.backward()
-    nn.utils.clip_grad_norm_(model.parameters(), 1.0) # prevent gradient explosion
+
+    if grad_clip is not None and grad_clip > 0:
+        nn.utils.clip_grad_norm_(model.parameters(), grad_clip)  # prevent gradient explosion
     optim.step()
 
     loss_rec += out["loss_rec"].item()
