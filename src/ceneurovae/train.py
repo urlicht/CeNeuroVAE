@@ -5,26 +5,26 @@ from .model.loss import step_kl_schedule
 from .optimizer import current_lr
 
 def train_epoch(model, loader, optim, device, grad_clip=1.0):
-  model.train()
-  loss_rec = loss_kl = loss_sum = n = 0
+    model.train()
+    loss_rec = loss_kl = loss_sum = n = 0
 
-  for X, M, Bx, I, _ in loader:
-    X, M, Bx, I = X.to(device), M.to(device), Bx.to(device), I.to(device)
-    out = model(X, M, Bx, I)
-    loss = out["loss_sum"]
-    optim.zero_grad(set_to_none=True)
-    loss.backward()
+    for X, M, Bx, I, _ in loader:
+        X, M, Bx, I = X.to(device), M.to(device), Bx.to(device), I.to(device)
+        out = model(X, M, Bx, I)
+        loss = out["loss_sum"]
+        optim.zero_grad(set_to_none=True)
+        loss.backward()
 
-    if grad_clip is not None and grad_clip > 0:
-        nn.utils.clip_grad_norm_(model.parameters(), grad_clip)  # prevent gradient explosion
-    optim.step()
+        if grad_clip is not None and grad_clip > 0:
+            nn.utils.clip_grad_norm_(model.parameters(), grad_clip)  # prevent gradient explosion
+        optim.step()
 
-    loss_rec += float(out["loss_rec"])
-    loss_kl  += float(out["loss_kl"])
-    loss_sum += float(loss)
-    n += 1
+        loss_rec += float(out["loss_rec"])
+        loss_kl  += float(out["loss_kl"])
+        loss_sum += float(loss)
+        n += 1
 
-  return {"train_rec": loss_rec / n, "train_kl": loss_kl / n, "train_sum": loss_sum / n}
+    return {"train_rec": loss_rec / n, "train_kl": loss_kl / n, "train_sum": loss_sum / n}
 
 def val_epoch(model, loader, device):
   model.eval()
