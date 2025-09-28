@@ -20,9 +20,9 @@ def train_epoch(model, loader, optim, device, grad_clip=1.0):
             nn.utils.clip_grad_norm_(model.parameters(), grad_clip)  # prevent gradient explosion
         optim.step()
 
-        loss_rec += float(out["loss_rec"])
-        loss_kl  += float(out["loss_kl"])
-        loss_sum += float(loss)
+        loss_rec += float(out["loss_rec"].detach())
+        loss_kl  += float(out["loss_kl"].detach())
+        loss_sum += float(loss.detach())
         n += 1
 
     return {"train_rec": loss_rec / n, "train_kl": loss_kl / n, "train_sum": loss_sum / n}
@@ -35,9 +35,9 @@ def val_epoch(model, loader, device):
         X, M, Bx, I = X.to(device), M.to(device), Bx.to(device), I.to(device)
         out = model(X, M, Bx, I)
 
-        loss_rec += float(out["loss_rec"])
-        loss_kl  += float(out["loss_kl"])
-        loss_sum += float(out["loss_sum"])
+        loss_rec += float(out["loss_rec"].detach())
+        loss_kl  += float(out["loss_kl"].detach())
+        loss_sum += float(out["loss_sum"].detach())
         n += 1
     
     return {"val_rec": loss_rec / n, "val_kl": loss_kl / n, "val_sum": loss_sum / n}
