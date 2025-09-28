@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 @torch.no_grad()
-def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, device='cpu'):
+def get_full_sequence_reconstruction(model, X, M, Bx, I, window_T=200, stride=100, device='cpu'):
     """
     Run model in sliding windows and stitch together reconstruction for the full sequence.
     
@@ -12,8 +12,8 @@ def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, devic
         M:  (1, N, T) mask
         Bx: (1, Tb, T) behavior
         I:  (1, N) neural identities
-        win: window length
-        hop: hop length
+        window_T: window length
+        stride: stride length
         device: 'cuda'/'cpu'/'mps'
 
     Returns:
@@ -26,15 +26,15 @@ def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, devic
     recon_full = torch.zeros_like(X)
     weight     = torch.zeros_like(M)  # to average overlaps
 
-    for t0 in range(0, T, hop):
-        t1 = min(t0 + win, T)
+    for t0 in range(0, T, stride):
+        t1 = min(t0 + window_T, T)
         # slice
         Xw  = X[:, :, t0:t1]
         Mw  = M[:, :, t0:t1]
         Bxw = Bx[:, :, t0:t1]
-        # pad window tail to win if needed (optional)
-        if t1 - t0 < win:
-            pad_t = win - (t1 - t0)
+        # pad window tail to window if needed (optional)
+        if t1 - t0 < window_T:
+            pad_t = window_T - (t1 - t0)
             Xw  = nn.functional.pad(Xw,  (0,pad_t))
             Mw  = nn.functional.pad(Mw,  (0,pad_t))
             Bxw = nn.functional.pad(Bxw, (0,pad_t))
@@ -50,7 +50,7 @@ def get_full_sequence_reconstruction(model, X, M, Bx, I, win=200, hop=100, devic
     return recon_full
 
 @torch.no_grad()
-def get_full_sequence_latent(model, X, M, Bx, I, win=200, hop=100, device='cuda'):
+def get_full_sequence_latent(model, X, M, Bx, I, window_T=200, stride=100, device='cuda'):
     """
     Run model in sliding windows and stitch together latent z for the full sequence.
 
@@ -60,8 +60,8 @@ def get_full_sequence_latent(model, X, M, Bx, I, win=200, hop=100, device='cuda'
       M:  (1, N, T) mask
       Bx: (1, Tb, T) behavior
       I:  (1, N) identities
-      win: window length
-      hop: hop length
+      window_T: window length
+      stride: stride length
       device: 'cuda'/'cpu'/'mps'
 
     Returns:
@@ -77,8 +77,8 @@ def get_full_sequence_latent(model, X, M, Bx, I, win=200, hop=100, device='cuda'
     z_full = torch.zeros((B, T, L), device=device)
     weight = torch.zeros((B, T, 1), device=device) # count overlaps per timestep
 
-    for t0 in range(0, T, hop):
-        t1 = min(t0 + win, T)
+    for t0 in range(0, T, stride):
+        t1 = min(t0 + window_T, T)
 
         # slice
         Xw  = X[:, :, t0:t1]
@@ -86,13 +86,13 @@ def get_full_sequence_latent(model, X, M, Bx, I, win=200, hop=100, device='cuda'
         Bxw = Bx[:, :, t0:t1]
 
         # pad if needed
-        if t1 - t0 < win:
-            pad_t = win - (t1 - t0)
+        if t1 - t0 < window_T:
+            pad_t = window_T - (t1 - t0)
             Xw  = nn.functional.pad(Xw,  (0, pad_t))
             Mw  = nn.functional.pad(Mw,  (0, pad_t))
             Bxw = nn.functional.pad(Bxw, (0, pad_t))
 
-        out = model(Xw, Mw, Bxw, I) # dict with "z": (B, win, L)
+        out = model(Xw, Mw, Bxw, I) # dict with "z": (B, window_T, L)
 
         # drop padded tail
         zw = out["z"][:, :t1 - t0, :] # (B, seg_len, L)
@@ -135,7 +135,7 @@ def decode_from_z(model, z, Bx, I):
     return recon
 
 @torch.no_grad()
-def decode_full_sequence_from_z(model, z_full, Bx, I, win=200, hop=100, device="cuda"):
+def decode_full_sequence_from_z(model, z_full, Bx, I, window_T=200, stride=100, device="cuda"):
     model.eval()
     z_full = z_full.to(device)
     Bx, I = Bx.to(device), I.to(device)
@@ -144,12 +144,12 @@ def decode_full_sequence_from_z(model, z_full, Bx, I, win=200, hop=100, device="
     recon = None
     weight = torch.zeros(B, T, 1, device=device)
 
-    for t0 in range(0, T, hop):
-        t1 = min(t0 + win, T)
+    for t0 in range(0, T, stride):
+        t1 = min(t0 + window_T, T)
         zw  = z_full[:, t0:t1, :]
         Bxw = Bx[:, :, t0:t1]
-        if t1 - t0 < win:
-            pad = win - (t1 - t0)
+        if t1 - t0 < window_T:
+            pad = window_T - (t1 - t0)
             zw  = nn.functional.pad(zw, (0, 0, 0, pad)) # pad time
             Bxw = nn.functional.pad(Bxw, (0, pad))
         rw = decode_from_z(model, zw, Bxw, I)[:, :, :t1 - t0] # (B,N,segments)

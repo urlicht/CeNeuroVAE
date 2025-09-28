@@ -11,7 +11,7 @@ def test_sliding_window_reconstruction_and_latent():
     M = torch.ones(B, N, T)
     Bx = torch.randn(B, Tb, T)
     I = torch.randint(0, cfg.n_identities, (B, N), dtype=torch.long)
-    recon = get_full_sequence_reconstruction(model, X, M, Bx, I, win=20, hop=10, device="cpu")
+    recon = get_full_sequence_reconstruction(model, X, M, Bx, I, window_T=20, stride=10, device="cpu")
     assert recon.shape == X.shape
-    z_full = get_full_sequence_latent(model, X, M, Bx, I, win=20, hop=10, device="cpu")
+    z_full = get_full_sequence_latent(model, X, M, Bx, I, window_T=20, stride=10, device="cpu")
     assert z_full.shape == (B, T, cfg.latent_dim)
