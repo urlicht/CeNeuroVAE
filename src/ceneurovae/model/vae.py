@@ -172,7 +172,7 @@ class NeuroBehaviorVAE(nn.Module):
     kl_true = kl_elem.mean()
 
     # posterior collapse prevention
-    tau = getattr(self, "tau_freebits", 0.0)
+    tau = self.cfg.tau_freebits
     if tau > 0:
         kl_dim = kl_elem.mean(dim=(0,1)) # (L,)
         loss_kl = torch.clamp(kl_dim, min=tau).mean()

@@ -17,6 +17,7 @@ class VAEConfig:
     dropout: float = 0.1
     beta_kl: float = 0.2  # weight on KL term
     loss_rec_type: str = "mse"  # "mse" or "huber"
+    tau_freebits: float = 0.0  # free bits threshold for KL term
 
 class PositionalEncoding(nn.Module):
   """
