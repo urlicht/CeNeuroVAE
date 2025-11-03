@@ -1,4 +1,5 @@
 # CeNeuroVAE
+[![CI](https://github.com/urlicht/CeNeuroVAE/actions/workflows/test.yml/badge.svg)](https://github.com/urlicht/CeNeuroVAE/actions/workflows/test.yml)
 
 ceneurovae is a compact package containing a Behavior-conditioned Neural data Variational Autoencoder (VAE) with transformers. It provides modular components (encoder, decoder, positional encoding, losses, data loaders) and a small training loop function to quickly test it out.
 
