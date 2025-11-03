@@ -1,7 +1,7 @@
 [project]
 name = "ceneurovae"
 version = "0.1.0"
-description = "Add your description here"
+description = "Behavior-conditioned Neural data Variational Autoencoder (VAE)"
 readme = "README.md"
 authors = [
     { name = "urlicht", email = "urlicht@users.noreply.github.com" }
