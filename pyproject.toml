@@ -7,7 +7,12 @@ authors = [
     { name = "urlicht", email = "urlicht@users.noreply.github.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy>=1.26",
+    "torch>=2.2",
+    "h5py>=3.10",
+]
+
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.3.0", "mypy>=1.8"]
